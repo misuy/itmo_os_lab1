@@ -681,3 +681,36 @@ procdump(void)
     printf("\n");
   }
 }
+
+void print_s(int id, uint32 const* ptr)
+{
+    if (ptr != 0) printf("s%d = %d\n", id, *ptr);
+}
+
+int dump(void)
+{
+    struct proc* cur_proc = myproc();
+    uint32* s_begin = (uint32*) (((uint8*) cur_proc->trapframe) + 176);
+    for (int id=2; id<12; id++)
+    {
+        print_s(id, s_begin + (id - 2) * 2);
+    }
+    return 0;
+}
+
+int dump2(int pid, int register_num, uint64 return_value)
+{
+    if ((register_num < 2) | (register_num > 11)) return -3;
+    struct proc* cur_proc = myproc();
+    struct proc* p;
+    for(p = proc; p < &proc[NPROC]; p++)
+    {
+        if (p->pid == pid)
+        {
+            if ((p->pid != cur_proc->pid) & (p->parent->pid != cur_proc->pid)) return -1;
+            if (!copyout(cur_proc->pagetable, return_value, ((char*) p->trapframe) + 176 + 8 * (register_num - 2), 8)) return 0;
+            return -4;
+        }
+    }
+    return -2;
+}
