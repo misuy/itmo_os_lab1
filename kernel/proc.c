@@ -531,7 +531,9 @@ forkret(void)
 }
 
 // Atomically release lock and sleep on chan.
+// Reacquires lock when awakened.// Atomically release lock and sleep on chan.
 // Reacquires lock when awakened.
+
 void
 sleep(void *chan, struct spinlock *lk)
 {
@@ -660,7 +662,7 @@ procdump(void)
 {
   static char *states[] = {
   [UNUSED]    "unused",
-  [USED]      "used",
+  [USED]      "used  ",
   [SLEEPING]  "sleep ",
   [RUNNABLE]  "runble",
   [RUNNING]   "run   ",
@@ -690,27 +692,31 @@ void print_s(int id, uint32 const* ptr)
 int dump(void)
 {
     struct proc* cur_proc = myproc();
-    uint32* s_begin = (uint32*) (((uint8*) cur_proc->trapframe) + 176);
-    for (int id=2; id<12; id++)
+    uint32* s_begin = (uint32*) (((uint8*) cur_proc->trapframe) + TRAPFRAME_S2_OFFSET);
+    for (int id=S_MIN; id<S_MAX+1; id++)
     {
-        print_s(id, s_begin + (id - 2) * 2);
+        print_s(id, s_begin + (id - S_MIN) * 2);
     }
     return 0;
 }
 
 int dump2(int pid, int register_num, uint64 return_value)
 {
-    if ((register_num < 2) | (register_num > 11)) return -3;
+    if ((register_num < S_MIN) | (register_num > S_MAX)) return DUMP2_REG_NOT_EX;
     struct proc* cur_proc = myproc();
     struct proc* p;
     for(p = proc; p < &proc[NPROC]; p++)
     {
         if (p->pid == pid)
         {
-            if ((p->pid != cur_proc->pid) & (p->parent->pid != cur_proc->pid)) return -1;
-            if (!copyout(cur_proc->pagetable, return_value, ((char*) p->trapframe) + 176 + 8 * (register_num - 2), 8)) return 0;
-            return -4;
+            if ((p->pid != cur_proc->pid) & (p->parent->pid != cur_proc->pid)) return DUMP2_RIGHTS;
+            if (!copyout(cur_proc->pagetable, return_value, ((char*) p->trapframe) + TRAPFRAME_S2_OFFSET + sizeof(uint64) * (register_num - S_MIN), sizeof(uint64))) return 0;
+            return DUMP2_WRITE_ERR;
         }
     }
-    return -2;
+    return DUMP2_PROC_NOT_EX;
 }
+
+// processes tree unix
+// clone vs fork
+// task: 2 processes communicates by unix-sockets, first sends array to another, second multiplies each element by two and sum them

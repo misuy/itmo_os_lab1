@@ -79,6 +79,15 @@ struct trapframe {
   /* 280 */ uint64 t6;
 };
 
+#define TRAPFRAME_S2_OFFSET 176
+#define S_MIN 2
+#define S_MAX 11
+#define DUMP2_RIGHTS (-1)
+#define DUMP2_PROC_NOT_EX (-2)
+#define DUMP2_REG_NOT_EX (-3)
+#define DUMP2_WRITE_ERR (-4)
+
+
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // Per-process state
