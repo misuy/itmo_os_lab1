@@ -17,61 +17,87 @@ struct devsw devsw[NDEV];
 struct {
   struct spinlock lock;
   struct file file[NFILE];
-} ftable;
+} ftable_depr;
 
 void
-fileinit(void)
+fileinit_depr(void)
 {
-  initlock(&ftable.lock, "ftable");
+  initlock(&ftable_depr.lock, "ftable");
+}
+
+void fileinit(void) {}
+
+// Allocate a file structure.
+struct file*
+filealloc_depr(void)
+{
+  struct file *f;
+
+  acquire(&ftable_depr.lock);
+  for(f = ftable_depr.file; f < ftable_depr.file + NFILE; f++){
+    if(f->ref == 0){
+      f->ref = 1;
+      release(&ftable_depr.lock);
+      return f;
+    }
+  }
+  release(&ftable_depr.lock);
+  return 0;
 }
 
 // Allocate a file structure.
 struct file*
 filealloc(void)
 {
-  struct file *f;
+    struct file *f = bd_malloc(sizeof(struct file));
+    if (f == 0) return 0;
+    initlock(&f->lock, "file");
+    f->ref = 1;
+    return f;
+}
 
-  acquire(&ftable.lock);
-  for(f = ftable.file; f < ftable.file + NFILE; f++){
-    if(f->ref == 0){
-      f->ref = 1;
-      release(&ftable.lock);
-      return f;
-    }
-  }
-  release(&ftable.lock);
-  return 0;
+
+// Increment ref count for file f.
+struct file*
+filedup_depr(struct file *f)
+{
+  acquire(&ftable_depr.lock);
+  if(f->ref < 1)
+    panic("filedup");
+  f->ref++;
+  release(&ftable_depr.lock);
+  return f;
 }
 
 // Increment ref count for file f.
 struct file*
 filedup(struct file *f)
 {
-  acquire(&ftable.lock);
-  if(f->ref < 1)
-    panic("filedup");
-  f->ref++;
-  release(&ftable.lock);
-  return f;
+    acquire(&f->lock);
+    if(f->ref < 1) panic("filedup");
+    f->ref++;
+    release(&f->lock);
+    return f;
 }
+
 
 // Close file f.  (Decrement ref count, close when reaches 0.)
 void
-fileclose(struct file *f)
+fileclose_depr(struct file *f)
 {
   struct file ff;
 
-  acquire(&ftable.lock);
+  acquire(&ftable_depr.lock);
   if(f->ref < 1)
     panic("fileclose");
   if(--f->ref > 0){
-    release(&ftable.lock);
+    release(&ftable_depr.lock);
     return;
   }
   ff = *f;
   f->ref = 0;
   f->type = FD_NONE;
-  release(&ftable.lock);
+  release(&ftable_depr.lock);
 
   if(ff.type == FD_PIPE){
     pipeclose(ff.pipe, ff.writable);
@@ -81,6 +107,31 @@ fileclose(struct file *f)
     end_op();
   }
 }
+
+// Close file f.  (Decrement ref count, close when reaches 0.)
+void
+fileclose(struct file *f)
+{
+    acquire(&f->lock);
+    if(f->ref < 1) panic("fileclose");
+    if(--f->ref > 0)
+    {
+        release(&f->lock);
+        return;
+    }
+    release(&f->lock);
+
+    if(f->type == FD_PIPE){
+        pipeclose(f->pipe, f->writable);
+    } else if(f->type == FD_INODE || f->type == FD_DEVICE){
+        begin_op();
+        iput(f->ip);
+        end_op();
+    }
+
+    bd_free(f);
+}
+
 
 // Get metadata about file f.
 // addr is a user virtual address, pointing to a struct stat.
