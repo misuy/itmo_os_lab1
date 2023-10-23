@@ -68,19 +68,21 @@ void bit_inverse(char *array, int index)
 
 // Print a bit vector as a list of ranges of 1 bits
 void bd_print_vector(char *vector, int len) {
-  int last, lb;
-
-  last = 1;
-  lb = 0;
-  for (int b = 0; b < len; b++) {
-    if (last == bit_isset(vector, b)) continue;
-    if (last == 1) printf(" [%d, %d)", lb, b);
-    lb = b;
-    last = bit_isset(vector, b);
+  int last, cur, streak;
+  if (len < 1) return;
+  last = bit_isset(vector, 0);
+  streak = 1;
+  for (int b = 1; b < len; b++) {
+    cur = bit_isset(vector, b);
+    if (last != cur)
+    {
+      printf("(val: %d, interval: %d-%d) ", last, b - streak, b - 1);
+      last = cur;
+      streak = 1;
+    }
+    else streak++;
   }
-  if (lb == 0 || last == 1) {
-    printf(" [%d, %d)", lb, len);
-  }
+  printf("(val: %d, interval: %d-%d) ", last, len - streak, len - 1);
   printf("\n");
 }
 
@@ -238,8 +240,17 @@ int bd_initfree_pair(int k, int bi, int is_left) {
   if (bit_isset(bd_sizes[k].pair_alloc, bi / 2)) {
     // one of the pair is free
     free = BLK_SIZE(k);
-    lst_push(&bd_sizes[k].free, addr(k, buddy));
-      /*
+    if (is_left)
+    {
+      if (buddy < bi) lst_push(&bd_sizes[k].free, addr(k, bi));
+      else lst_push(&bd_sizes[k].free, addr(k, buddy));
+    }
+    else
+    {
+      if (buddy < bi) lst_push(&bd_sizes[k].free, addr(k, buddy));
+      else lst_push(&bd_sizes[k].free, addr(k, bi));
+    }
+    /*
     if (bit_isset(bd_sizes[k].alloc, bi))
       lst_push(&bd_sizes[k].free, addr(k, buddy));  // put buddy on free list
     else
