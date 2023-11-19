@@ -1,1 +1,1 @@
-#define ASSERT(cond, msg) if (!cond) printf("assetion failed: %s", msg);
+#define ASSERT(cond, msg) if (!cond) printf("ASSERTION FAILED: %s", msg);

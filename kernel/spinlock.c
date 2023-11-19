@@ -7,6 +7,7 @@
 #include "riscv.h"
 #include "proc.h"
 #include "defs.h"
+#include "util.h"
 
 void
 initlock(struct spinlock *lk, char *name)
@@ -47,8 +48,11 @@ void
 release(struct spinlock *lk)
 {
   if(!holding(lk))
+  {
+    ASSERT((lk->cpu == mycpu()), "release diff cpu\n");
+    printf("release %s\n", lk->name);
     panic("release");
-
+  }
   lk->cpu = 0;
 
   // Tell the C compiler and the CPU to not move loads or stores
