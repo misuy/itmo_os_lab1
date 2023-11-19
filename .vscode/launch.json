@@ -12,7 +12,7 @@
             "cwd": "${workspaceFolder}",
             // Speciry the full path to riscv64-unknown-elf-gdb.
             // Mac users should use the gdb in SiFive toolchain.
-            "miDebuggerPath": "$/home/misuy/Downloads/sc-dt/riscv-gcc/bin/riscv64-unknown-elf-gdb",
+            "miDebuggerPath": "/home/misuy/Downloads/sc-dt/riscv-gcc/bin/riscv64-unknown-elf-gdb",
             // Replace 25501 with (2500 + YOURID) where YOURID is the integer given by the command "id -u".
             "miDebuggerServerAddress": "127.0.0.1:26000",
             "MIMode": "gdb",
