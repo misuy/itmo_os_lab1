@@ -391,8 +391,11 @@ int
 wait(uint64 addr)
 {
   struct proc *pp;
+  int zero_exit_status = 0;
   int havekids, pid;
   struct proc *p = myproc();
+  if (addr != 0)
+    copyout(p->pagetable, addr, (char *)&zero_exit_status, sizeof(int));
 
   acquire(&wait_lock);
 

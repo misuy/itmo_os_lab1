@@ -67,7 +67,7 @@ usertrap(void)
 
     syscall();
   }
-  else if (r_scause() == 15)
+  else if ((r_scause() == 5) | (r_scause() == 7))
   {
     uint64 va = PGROUNDDOWN(r_stval());
     if (va >= MAXVA)
@@ -75,28 +75,46 @@ usertrap(void)
     pte_t *pte = walk(p->pagetable, va, 0);
     if (pte == 0)
       goto err;
-    if (!(*pte & PTE_S))
-      goto err;
-    
-    uint64 pa = PTE2PA(*pte);
-    *pte &= ~PTE_S;
-    *pte |= PTE_W;
-    if (page_refs_get((void *) pa) > 1)
-    {
-      uint flags = PTE_FLAGS(*pte);
-      flags &= ~PTE_S;
-      flags |= PTE_W;
 
-      uint64 new_pa;
-      if((new_pa = (uint64) kalloc()) == 0)
-        setkilled(p);
-      else
+    if (*pte & PTE_L)
+    {
+      if (alloc_page(pte) < 0)
       {
-        memmove((char *) new_pa, (char *) pa, PGSIZE);
-        kfree((void *) pa);
-        *pte = PA2PTE(new_pa) | flags;
+        setkilled(p);
+        goto end;
       }
     }
+    else
+      goto err;
+  }
+  else if ((r_scause() == 13) | (r_scause() == 15))
+  {
+    uint64 va = PGROUNDDOWN(r_stval());
+    if (va >= MAXVA)
+      goto err;
+    pte_t *pte = walk(p->pagetable, va, 0);
+    if (pte == 0)
+      goto err;
+
+
+    if (*pte & PTE_L)
+    {
+      if (alloc_page(pte) < 0)
+      {
+        setkilled(p);
+        goto end;
+      }
+    }
+    else if (*pte & PTE_S)
+    {      
+      if (copy_page(pte) < 0)
+      {
+        setkilled(p);
+        goto end;
+      }
+    }
+    else
+      goto err;
   }
   else if((which_dev = devintr()) != 0)
   {
@@ -110,6 +128,7 @@ usertrap(void)
     setkilled(p);
   }
 
+  end:
   if(killed(p))
     exit(-1);
 
