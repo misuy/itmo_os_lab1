@@ -73,6 +73,7 @@ exec(char *path, char **argv)
   ip = 0;
 
   p = myproc();
+  //vmprint(p->pagetable);
   uint64 oldsz = p->sz;
 
   // Allocate two pages at the next page boundary.
